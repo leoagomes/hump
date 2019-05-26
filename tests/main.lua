@@ -1,14 +1,58 @@
 Timer = require("timer")
 
+function assert_very_close(a, b)
+   local tol = 0.0000000001
+   assert(math.abs(a - b) < tol,
+	  string.format("%.10f is not equal within %.10f of %10f",
+			a, tol, b))
+end
 
-function love.load()
+function test_basic()
    -- test basic functionality
-   basic = {x=0, y=0}
+   local basic = {x=0, y=0}
+   Timer.tween(3, basic, {x=99, y=66})
+   Timer.update(1)
+   assert_very_close(basic.x, 33)
+   assert_very_close(basic.y, 22)
+   Timer.update(2)
+   assert_very_close(basic.x, 99)
+   assert_very_close(basic.y, 66)
+end
+
+
+function test_tween_userdata()
+   -- only run if love is not nil!
+   if love ~= nil then
+      Timer.func_tween(5, love.graphics, {Color={0, 0, 0}})
+      Timer.update(5)
+      local r, g, b, a = love.graphics.getColor()
+      assert_very_close(r, 0)
+      assert_very_close(g, 0)
+      assert_very_close(b, 0)
+      assert_very_close(a, 1)
+   end
+end
+
+function test_tween_subtable()
    -- test tweening for sub-table
-   inner_table = {posn={x=20, y=20}}
+   local inner_table = {posn={x=20, y=20}}
+   Timer.tween(4, inner_table, {posn={x=10, y=30}})
+   Timer.update(4)
+   assert_very_close(inner_table.posn.x, 10)
+   assert_very_close(inner_table.posn.y, 30)
+end
+
+function test_tweening_arraylike()
    -- test tweening for array-like
-   array_like = {40, 40}
-   -- test tweening for single getter/setter
+   local array_like = {40, -11}
+   Timer.tween(30, array_like, {-10, -10})
+   Timer.update(30)
+   assert_very_close(array_like[1], -10)
+   assert_very_close(array_like[2], -10)
+end
+
+function test_tween_setget()
+-- -- test tweening for single getter/setter
    univar_setget = {
       getX = function(self)
 	 return self.x
@@ -25,8 +69,22 @@ function love.load()
       x = 60,
       y = 60
    }
+   Timer.func_tween(5, univar_setget, {X=10, Y=180}, nil, nil, {
+		       X={univar_setget.setX, univar_setget.getX},
+		       Y={univar_setget.setY, univar_setget.getY}})
+   Timer.update(5)
+   assert_very_close(univar_setget:getX(), 10)
+   assert_very_close(univar_setget:getY(), 180)
+end
 
+
+function test_tweening_multivalue_setget()
    -- test tweening for multi-value getter/setter
+   --[[
+      Some functions such as `Body:set/getPosition` or `set/getLinearVelocity`
+      need and return multiple values
+      we should be able to handle that
+   --]]
    multivar_setget = {
       getP = function(self)
 	 return self.x, self.y
@@ -38,8 +96,14 @@ function love.load()
       x = 80,
       y = 80
    }
+   Timer.tween(10, multivar_setget, {P={65, 180}}, 'quad')
+   Timer.update(10)
+   assert_very_close(multivar_setget.x, 65)
+   assert_very_close(multivar_setget.y, 180)
+end
 
-   -- test tweening for table-best getter/setter
+function test_tweening_table_setget()
+   -- test tweening for table-based getter/setter
    table_setget = {
       getP = function(self)
 	 return self.posn
@@ -50,8 +114,15 @@ function love.load()
       end,
       posn={x=100, y=100}
    }
+   Timer.tween(10, table_setget, {P={x=65, y=180}}, 'quad')
+   Timer.update(10)
+   assert_very_close(table_setget.posn.x, 65)
+   assert_very_close(table_setget.posn.y, 180)
 
-   -- test tweening setget for array-like tables
+end
+
+function test_tweening_arraylike_table_setget()
+-- test tweening setget for array-like tables
    array_setget = {
       getP = function(self)
 	 return self.posn
@@ -61,41 +132,30 @@ function love.load()
       end,
       posn = {120, 120}
    }
-   pt = 600
-   t = 3
-   globalt = 0
-   --test direct tweening of userdata
-   Timer.tween(t, love.graphics, {Color={0, 0, 0}})
+
+   Timer.tween(10, array_setget, {P={65, 180}}, 'quad')
+   Timer.update(10)
+   assert_very_close(array_setget.posn[1], 65)
+   assert_very_close(array_setget.posn[2], 180)
+end
+
+function runtests()
+   print("run tests")
+   for n, t in pairs(_G) do
+      if string.find(n, 'test_') then
+	 local s, e =  pcall(t)
+	 if s then print("PASS")
+	 else print('error in ', n, ":") print(e) end
+      end
+   end
+end
+	    
+	 
+if love ~= nil then
+   function love.load()
+      runtests()
+   end
+else
+   runtests()
+end
    
-   Timer.tween(t, basic, {x=pt, y=pt})
-   Timer.tween(t, inner_table, {posn={x=pt, y=pt}})
-   Timer.tween(t, array_like, {pt, pt})
-   Timer.func_tween(t, univar_setget, {X=pt, Y=pt}, nil, nil, {
-   			     X={univar_setget.setX, univar_setget.getX},
-   			     Y={univar_setget.setY, univar_setget.getY}})
-   Timer.tween(t, multivar_setget, {P={pt, pt}})
-   Timer.tween(t, table_setget, {P={{x=pt, y=pt}}})
-   Timer.tween(t, array_setget, {P={{pt, pt}}})
-
-end
---TODO ??
-function love.draw()
-   love.graphics.circle('fill', basic.x, basic.y,10)
-   love.graphics.circle('fill', inner_table.posn.x, inner_table.posn.y, 10)
-   love.graphics.circle('fill', array_like[1], array_like[2], 10)
-   love.graphics.circle('fill', univar_setget:getX(), univar_setget:getY(), 10)
-   toshow = {multivar_setget:getP()}
-   toshow[#toshow+1] = 10
-   love.graphics.circle('fill', unpack(toshow))
-   table_toshow = table_setget:getP()
-   love.graphics.circle('fill', table_toshow.x, table_toshow.y, 10)
-   array_toshow = array_setget:getP()
-   array_toshow[#array_toshow+1]=10
-   love.graphics.circle('fill', unpack(array_toshow))
-end
-
-function love.update(dt)
-   Timer.update(dt)
-   globalt = globalt + dt
-
-end
