@@ -1,4 +1,4 @@
-Timer = require("../timer")
+Timer = require("timer")
 
 
 function love.load()

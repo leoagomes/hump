@@ -243,7 +243,7 @@ local function def_tween(func)
 	       or construct('^out%-([^-]+)$', out)
 	    or construct('^in%-out%-([^-]+)$', function(f) return chain(f, out(f)) end)
 	    or construct('^out%-in%-([^-]+)$', function(f) return chain(out(f), f) end)
-dd	       or error('Unknown interpolation method: ' .. key)
+	       or error('Unknown interpolation method: ' .. key)
    end})
 end
 
