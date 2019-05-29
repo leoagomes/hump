@@ -38,6 +38,8 @@ List of Functions
 * :func:`Timer.clear() <Timer.clear>`
 * :func:`Timer.update(dt) <Timer.update>`
 * :func:`Timer.tween(duration, subject, target, method, after, ...) <Timer.tween>`
+* :func:`Timer.func_tween(duration, subject, target, method, after,
+                          setters_and_getters, ...) <Timer.func_tween>`
 
 Function Reference
 ------------------
@@ -476,3 +478,139 @@ You can also invert and chain functions::
 
     outsqrt = Timer.tween.out(math.sqrt)
     inoutsqrt = Timer.tween.chain(math.sqrt, outsqrt)
+
+.. function:: Timer.func_tween(duration, subject, target, method, after,
+	                       setters_and_getters, ...)
+
+
+   :param number duration: Duration of the tween.
+   :param table subject: Object to be tweened.
+   :param table target: Target values.
+   :param string method: Tweening method, defaults to 'linear' (:ref:`see here
+                         <tweening-methods>`, optional).
+   :param function after: Function to execute after the tween has finished
+                          (optional).
+   :param table setters_and_getters: table mapping variable names to setters/getters
+   :param mixed ...:  Additional arguments to the *tweening* function.
+   :returns: A timer handle.
+
+
+
+just like Timer.tween, only it can handle variables which are not directly
+accessible, but controlled by getters and setters.
+These getters and setters can be guessed if getters_and_setters is not supplied,
+or they can be supplied in the form {<key>={<setter>, <getter>}}
+
+if a key in target corresponds to nil in subject, hump looks for it in
+setters_and_getters, the corresponding value is expected to be a table
+of the form {setter, getter}. If it is **not** in setters_and_getters
+**hump assumes the setter and getter are set<key> and get<key> respectively**
+for example, given a target {X=num} it will look for subject.setX and subject.getX
+and finally throws an error if these do not exist.
+
+tweening several different forms of getter setter functions, both explicitly and
+implicitly getting setters/getters
+
+**Example**::
+  Timer = require("../timer")
+
+
+  function love.load()
+     -- test basic functionality
+     basic = {x=0, y=0}
+     -- test tweening for sub-table
+     inner_table = {posn={x=20, y=20}}
+     -- test tweening for array-like
+     array_like = {40, 40}
+     -- test tweening for single getter/setter
+     univar_setget = {
+        getX = function(self)
+ 	   return self.x
+          end,
+        getY = function(self)
+    	 return self.y
+        end,
+        setX = function(self, x)
+    	 self.x = x
+        end,
+        setY = function(self, y)
+    	 self.y = y
+        end,
+        x = 60,
+        y = 60
+     }
+    
+     -- test tweening for multi-value getter/setter
+     multivar_setget = {
+        getP = function(self)
+    	 return self.x, self.y
+        end,
+        setP = function(self, x, y)
+    	 self.x = x
+    	 self.y = y
+        end,
+        x = 80,
+        y = 80
+     }
+    
+     -- test tweening for table-best getter/setter
+     table_setget = {
+        getP = function(self)
+    	 return self.posn
+        end,
+        setP = function(self, posn)
+    	 self.posn.x = posn.x
+    	 self.posn.y = posn.y
+        end,
+        posn={x=100, y=100}
+     }
+    
+     -- test tweening setget for array-like tables
+     array_setget = {
+        getP = function(self)
+    	 return self.posn
+        end,
+        setP = function(self, posn)
+    	 self.posn=posn
+        end,
+        posn = {120, 120}
+     }
+     pt = 600
+     t = 3
+     globalt = 0
+     --test direct tweening of userdata
+     Timer.func_tween(t, love.graphics, {Color={0, 0, 0}})
+     
+     Timer.func_tween(t, basic, {x=pt, y=pt})
+     Timer.func_tween(t, inner_table, {posn={x=pt, y=pt}})
+     Timer.func_tween(t, array_like, {pt, pt})
+     Timer.func_tween(t, univar_setget, {X=pt, Y=pt}, nil, nil, {
+     			     X={univar_setget.setX, univar_setget.getX},
+     			     Y={univar_setget.setY, univar_setget.getY}})
+     Timer.func_tween(t, multivar_setget, {P={pt, pt}})
+     Timer.func_tween(t, table_setget, {P={{x=pt, y=pt}}})
+     Timer.func_tween(t, array_setget, {P={{pt, pt}}})
+    
+  end
+
+  function love.draw()
+       love.graphics.circle('fill', basic.x, basic.y,10)
+       love.graphics.circle('fill', inner_table.posn.x, inner_table.posn.y, 10)
+       love.graphics.circle('fill', array_like[1], array_like[2], 10)
+       love.graphics.circle('fill', univar_setget:getX(), univar_setget:getY(), 10)
+       toshow = {multivar_setget:getP()}
+       toshow[#toshow+1] = 10
+       love.graphics.circle('fill', unpack(toshow))
+       table_toshow = table_setget:getP()
+       love.graphics.circle('fill', table_toshow.x, table_toshow.y, 10)
+       array_toshow = array_setget:getP()
+       array_toshow[#array_toshow+1]=10
+       love.graphics.circle('fill', unpack(array_toshow))
+  end
+      
+  function love.update(dt)
+       Timer.update(dt)
+       globalt = globalt + dt
+      
+  end
+::  
