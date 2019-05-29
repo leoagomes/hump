@@ -116,7 +116,6 @@ local function func_tween(tween, self, len, subject, target, method, after,
 	 setter = subject['set'..k]
 	 getter = subject['get'..k]
       end
-
       assert(setter and getter,
 	     "key's value in subject is nil with no set/getter")
 
@@ -126,7 +125,7 @@ local function func_tween(tween, self, len, subject, target, method, after,
 
       ref = {getter(subject)}
       to_func_tween[subject][k] = {ref, setter}
-      if type(v) == 'number' then
+      if type(v) == 'number' or #ref == 1 then
 	 v = {v}
       end
       return ref, v
@@ -140,7 +139,6 @@ local function func_tween(tween, self, len, subject, target, method, after,
 	 if ref == nil then
 	    ref, v = set_and_get(subject, k, v)
 	 end
-
 	 assert(type(v) == type(ref), 'Type mismatch in field "'..k..'". '
 		   ..type(v)..' vs '.. type(ref))
 	 if type(v) == 'table' then
